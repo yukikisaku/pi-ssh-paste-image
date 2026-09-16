@@ -1,0 +1,45 @@
+{
+  "name": "@yukikisaku/pi-ssh-paste-image",
+  "version": "0.1.0",
+  "description": "Paste local clipboard text or images into Pi running over SSH.",
+  "type": "module",
+  "license": "MIT",
+  "author": "yuki-kisaku",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yukikisaku/pi-ssh-paste-image.git"
+  },
+  "homepage": "https://github.com/yukikisaku/pi-ssh-paste-image#readme",
+  "bugs": {
+    "url": "https://github.com/yukikisaku/pi-ssh-paste-image/issues"
+  },
+  "keywords": [
+    "pi-package",
+    "pi-extension"
+  ],
+  "files": [
+    "index.js",
+    "pi-ssh-paste-image.js",
+    "src/"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "pi": {
+    "extensions": [
+      "./index.js"
+    ]
+  },
+  "bin": {
+    "pi-ssh-paste-image": "./pi-ssh-paste-image.js"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  }
+}
