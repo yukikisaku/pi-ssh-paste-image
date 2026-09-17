@@ -164,16 +164,14 @@ function parseBytes(value, fallback) {
 
 function hasCommand(command) {
   return new Promise((resolve) => {
-    const child = spawnShell(`command -v ${shellQuote(command)} >/dev/null 2>&1`);
+    const lookupCommand = process.platform === "win32" ? "where.exe" : "sh";
+    const args = process.platform === "win32"
+      ? [command]
+      : ["-lc", `command -v ${shellQuote(command)} >/dev/null 2>&1`];
+    const child = spawn(lookupCommand, args, { stdio: "ignore" });
     child.once("exit", (code) => resolve(code === 0));
     child.once("error", () => resolve(false));
   });
-}
-
-function spawnShell(command) {
-  const shell = process.platform === "win32" ? "cmd.exe" : "sh";
-  const args = process.platform === "win32" ? ["/c", command] : ["-lc", command];
-  return spawn(shell, args, { stdio: "ignore" });
 }
 
 function randomToken(bytes = 24) {

@@ -4,12 +4,15 @@ import path from "node:path";
 import { encodeJsonLine, errorResponse, okResponse, parseJsonLine, validateRequest } from "./protocol.js";
 import { readClipboard } from "./clipboard.js";
 
-export async function startPasteDaemon({ socketPath, token, maxBytes = 20 * 1024 * 1024 } = {}) {
-  if (!socketPath) throw new Error("socketPath is required");
+export async function startPasteDaemon({ socketPath, host, port, token, maxBytes = 20 * 1024 * 1024 } = {}) {
+  const useTcp = host !== undefined || port !== undefined;
+  if (!useTcp && !socketPath) throw new Error("socketPath is required");
   if (!token) throw new Error("token is required");
 
-  await mkdir(path.dirname(socketPath), { recursive: true, mode: 0o700 });
-  await rm(socketPath, { force: true });
+  if (!useTcp) {
+    await mkdir(path.dirname(socketPath), { recursive: true, mode: 0o700 });
+    await rm(socketPath, { force: true });
+  }
 
   const server = net.createServer((socket) => {
     handleConnection(socket, { token, maxBytes }).catch((error) => {
@@ -17,19 +20,28 @@ export async function startPasteDaemon({ socketPath, token, maxBytes = 20 * 1024
     });
   });
 
+  const listenHost = host || "127.0.0.1";
   await new Promise((resolve, reject) => {
     server.once("error", reject);
-    server.listen(socketPath, () => {
+    const onListening = () => {
       server.off("error", reject);
       resolve();
-    });
+    };
+    if (useTcp) {
+      server.listen({ host: listenHost, port: port ?? 0 }, onListening);
+    } else {
+      server.listen(socketPath, onListening);
+    }
   });
 
+  const address = server.address();
   return {
-    socketPath,
+    socketPath: useTcp ? undefined : socketPath,
+    host: useTcp ? listenHost : undefined,
+    port: useTcp && typeof address === "object" && address ? address.port : undefined,
     close: async () => {
       await new Promise((resolve) => server.close(resolve));
-      await rm(socketPath, { force: true });
+      if (!useTcp) await rm(socketPath, { force: true });
     },
   };
 }

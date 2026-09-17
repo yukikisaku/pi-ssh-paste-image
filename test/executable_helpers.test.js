@@ -6,6 +6,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { parseUriList } from "../src/clipboard.js";
 import { payloadToEditorText, sanitizeFileName } from "../src/save-payload.js";
+import { startPasteDaemon } from "../src/daemon.js";
 import { buildRemoteCommand, buildSshArgs } from "../src/ssh-wrapper.js";
 import { isPasteBridgeConfigured } from "../src/settings.js";
 
@@ -64,6 +65,31 @@ test("buildSshArgs includes reverse socket and remote env", () => {
   assert.ok(args.includes("user@example.com"));
   assert.match(args.at(-1), /PI_PASTE_SOCK/);
   assert.match(args.at(-1), /PI_PASTE_TOKEN/);
+});
+
+test("buildSshArgs supports a loopback TCP forward target", () => {
+  const args = buildSshArgs({
+    target: "user@example.com",
+    localForwardTarget: "127.0.0.1:45678",
+    remoteSocket: "/tmp/remote.sock",
+    token: "secret",
+    outputDir: "/tmp/out",
+    maxBytes: 123,
+    remoteCommand: ["pi"],
+  });
+
+  assert.ok(args.includes("/tmp/remote.sock:127.0.0.1:45678"));
+});
+
+test("startPasteDaemon can listen on loopback TCP", async () => {
+  const daemon = await startPasteDaemon({ host: "127.0.0.1", port: 0, token: "secret" });
+  try {
+    assert.equal(daemon.host, "127.0.0.1");
+    assert.ok(Number.isInteger(daemon.port));
+    assert.ok(daemon.port > 0);
+  } finally {
+    await daemon.close();
+  }
 });
 
 test("buildRemoteCommand shell-quotes remote command arguments", () => {

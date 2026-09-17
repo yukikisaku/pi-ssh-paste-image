@@ -12,16 +12,19 @@ export async function runSshWrapper({ target, remoteCommand = [], outputDir, max
     throw new Error("ssh target is required. Example: pi-ssh-paste-image ssh user@host -- pi");
   }
 
-  const tmpDir = await mkdtemp(path.join(os.tmpdir(), "pi-ssh-paste-image-"));
-  const localSocket = path.join(tmpDir, "local.sock");
   const token = randomToken();
-  const daemon = await startPasteDaemon({ socketPath: localSocket, token, maxBytes });
   const remoteSock = remoteSocket || `/tmp/pi-ssh-paste-image-${randomToken(10)}.sock`;
+  const tmpDir = process.platform === "win32" ? undefined : await mkdtemp(path.join(os.tmpdir(), "pi-ssh-paste-image-"));
+  const localSocket = tmpDir ? path.join(tmpDir, "local.sock") : undefined;
+  const daemon = localSocket
+    ? await startPasteDaemon({ socketPath: localSocket, token, maxBytes })
+    : await startPasteDaemon({ host: "127.0.0.1", port: 0, token, maxBytes });
+  const localForwardTarget = localSocket || `${daemon.host}:${daemon.port}`;
 
   try {
     const sshArgs = buildSshArgs({
       target,
-      localSocket,
+      localForwardTarget,
       remoteSocket: remoteSock,
       token,
       remoteCommand,
@@ -34,11 +37,13 @@ export async function runSshWrapper({ target, remoteCommand = [], outputDir, max
     process.exitCode = code;
   } finally {
     await daemon.close().catch(() => {});
-    await rm(tmpDir, { recursive: true, force: true });
+    if (tmpDir) await rm(tmpDir, { recursive: true, force: true });
   }
 }
 
-export function buildSshArgs({ target, localSocket, remoteSocket, token, remoteCommand = [], outputDir, maxBytes, sshOptions = [] }) {
+export function buildSshArgs({ target, localSocket, localForwardTarget, remoteSocket, token, remoteCommand = [], outputDir, maxBytes, sshOptions = [] }) {
+  const forwardTarget = localForwardTarget || localSocket;
+  if (!forwardTarget) throw new Error("local forward target is required");
   const command = buildRemoteCommand({ remoteSocket, token, remoteCommand, outputDir, maxBytes });
   return [
     "-t",
@@ -49,7 +54,7 @@ export function buildSshArgs({ target, localSocket, remoteSocket, token, remoteC
     "-o",
     "StreamLocalBindMask=0177",
     "-R",
-    `${remoteSocket}:${localSocket}`,
+    `${remoteSocket}:${forwardTarget}`,
     ...sshOptions,
     target,
     command,
