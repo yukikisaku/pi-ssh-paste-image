@@ -68,6 +68,12 @@ pi uninstall npm:@yukikisaku/pi-ssh-paste-image
 
 Remove package-specific Pi configuration if you no longer need it. Files previously saved in the configured output directory are not deleted automatically.
 
+## Pull requests
+
+This repository includes a policy for automatic AI review and merge of incoming pull requests. It becomes active when the CI and merge workflows are on `main` and the maintainer's GitHub event automation is enabled; a draft setup PR does not activate it.
+
+Once active, AI reviews each non-draft PR and it is merged automatically only when the review has no findings, required CI succeeds, and there are no conflicts or unresolved review threads. New commits require a new review. Changes to the automation itself require manual merge. See [AI review and merge operations](docs/ai-review-operations.md).
+
 ## License
 
 MIT © yuki-kisaku. See [LICENSE](LICENSE).
